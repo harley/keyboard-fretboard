@@ -1,0 +1,2448 @@
+#LyX 1.5.4 created this file. For more info see http://www.lyx.org/
+\lyxformat 276
+\begin_document
+\begin_header
+\textclass article
+\language english
+\inputencoding auto
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\paperfontsize 12
+\spacing single
+\papersize default
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\cite_engine natbib_authoryear
+\use_bibtopic false
+\paperorientation portrait
+\leftmargin 1in
+\topmargin 1.5in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation skip
+\defskip bigskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\author "" 
+\author "" 
+\end_header
+
+\begin_body
+
+\begin_layout Title
+CS290 Final Report
+\newline
+Virtual Piano Keyboard and Guitar Fretboard Widgets for
+ Haskore
+\end_layout
+
+\begin_layout Author
+Harley Trung
+\newline
+Advisor: Paul Hudak
+\end_layout
+
+\begin_layout Date
+Spring 2009
+\end_layout
+
+\begin_layout Abstract
+Functional Reactive Programming (FRP) is a programming paradigm for reactive
+ programming using the building blocks of functional programming to model
+ hybrid systems containing both continuous time-varying behaviors and discrete
+ events.
+ FRP has been applied to a variety of systems, including computer animation
+ [EH97], robotics [HCNP02], and real-time systems [WTH01].
+ 
+\end_layout
+
+\begin_layout Abstract
+In computer music, we want to expose to the programmer the notion of discrete
+ notes, events, and continuous audio signals, as well as the transition
+ and interaction between these entities.
+ The hybrid and dynamic nature of the problem makes FRP a good choice for
+ modeling computer music systems [E09].
+\end_layout
+
+\begin_layout Abstract
+Haskore [HMGW96], a domain-specific language (DSL) built on top of Haskell,
+ takes an algebraic approach to high-level music description and composition.
+ Haskore has built-in functions to represent notes, rhythms, chords and
+ many more.
+ In Haskore a basic set of widgets is provided that are collectively referred
+ to as the Graphical Music Interface (GMI) [H08].
+\end_layout
+
+\begin_layout Abstract
+However, Haskore GMI currently provides only a limited set of UI widgets
+ that can only create buttons, value sliders, checkboxes, radio buttons,
+ text displays, and allow MIDI input and output.
+ This project sets out to add to Haskore two high-level, sophisticated widgets:
+ a piano keyboard and a guitar fretboard.
+ There are four goals in mind.
+ First, the design and implementation should be as generic as possible,
+ maximizing common features to be shared by a piano keyboard and a guitar
+ fretboard.
+ Second, the design should reflect real life instruments.
+ For example, the virtual piano keyboard should behave almost identical
+ to a MIDI keyboard that can be plugged into a computer for MIDI input;
+ a pedal can be attached to it and there are nobs to change various settings
+ such as echo, transpose, etc.
+ Third, the interface must not only be simple enough to customize and use,
+ but also support a rich set of features such as echo, transpose, pedal,
+ import-song, change-instrument and MIDI output.
+ Finally, I discuss the challenges encountered during the development and
+ potential contributions of these widgets to a Haskore user.
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+The initial project proposal was to extend the functional UI library in
+ Haskore by integrating the GMI with a popular GUI framework so as to allow
+ direct porting of UI widgets to GMI.
+ However, there is no current GUI framework written in Haskell that is stable
+ enough to use.
+ For example, Phooey, a popular functional UI library for Haskell, uses
+ wxHaskell to provide an FRP-like abstraction for GUI programming.
+ However, wxHaskell itself is built on top of wxWidgets, a C++ library,
+ and is having some known issues in Linux.
+ I encountered problems testing out Phooey and many of the known bugs are
+ not yet solved.
+ Other Haskell GUI frameworks such as Grapefruit, wxFruit, gtk2hs are also
+ new and unstable.
+ Moreover, these external GUI packages are very different from Haskore.
+ Therefore, the goal of integrating Haskore's Functional UI with one of
+ these frameworks while maintaining the signal level abstraction is too
+ ambitious.
+ The project was therefore limited to designing instrument widgets for Haskore.
+\end_layout
+
+\begin_layout Standard
+The project is still interesting and challenging nevertheless.
+ Haskell is different from conventional imperative and object-oriented languages
+ such as C, C++, Java, C# and so on.
+ It requires a different mind-set to program in Haskell, with the goals
+ towards the purity, elegance in the programs.
+ 
+\end_layout
+
+\begin_layout Standard
+For this report to be more readable, I will first explain some aspects of
+ Haskore, mainly borrowing from [H08].
+\end_layout
+
+\begin_layout Section
+A brief introduction of Haskore's GMI
+\end_layout
+
+\begin_layout Standard
+Haskore's Graphical Music Interface contains a basic set of widgets.
+ There are two levels of abstraction: At the 
+\emph on
+user interface 
+\emph default
+(UI) level, basic IO-like commands are provided for creating graphical sliders,
+ push-buttons, and so on for input, and textual displays and graphic images
+ for output.
+ In addition to these graphical widgets, the UI level also provides an interface
+ to standard Midi input and output devices.
+ A virtual keyboard or fretboard belongs to the graphic input widget category.
+\end_layout
+
+\begin_layout Standard
+The second level of abstraction of the GMI is the 
+\emph on
+signal level
+\emph default
+.
+ A signal is a time-varying quantity that captures the behavior of many
+ widgets.
+ A special case of a signal is an event, such as a MIDI event, which occurs
+ each time a Note-On or Note-Off message is sent to output.
+\end_layout
+
+\begin_layout Subsection
+Signals
+\end_layout
+
+\begin_layout Standard
+Abstractly, signal can be 
+\emph on
+thought of
+\emph default
+ as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+Signal a = Time 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+a
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where Time is represented as a Double in Haskore.
+ It is helpful to think of signals like the following (Note that it is not
+ how Haskore defines signal, but the idea is there)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+data Signal a = Signal (Time 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+a)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+From here on our discussion will mainly be on actual Haskell type signatures.
+ An event can then simply be defined as a value of type 
+\emph on
+Signal (Maybe a)
+\emph default
+ where
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+data 
+\series default
+\emph on
+Maybe a = Nothing | Just a
+\end_layout
+
+\begin_layout Standard
+Therefore, an event is type synonym:
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+type
+\series default
+ 
+\emph on
+EventS a = Signal (Maybe a)
+\end_layout
+
+\begin_layout Subsection
+The UI Monad
+\end_layout
+
+\begin_layout Standard
+GMI widgets are created at the UI level.
+ Similar to IO, UI is an abstract type and is a monad, which allows us to
+ use the 
+\series bold
+do
+\series default
+ syntax.
+ See the table for the current list of GMI Input Widgets.
+ The names and type signatures should suggest their functionality.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+label :: String 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI () 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+display :: Signal String 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ I () 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+button :: String 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI (Signal Bool ) 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+checkbox :: String 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ Bool 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI (Signal Bool ) 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+radio :: [String ] 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ Int 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI (Signal Int ) 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+hSlider , vSlider :: (RealFrac a) 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ (a, a) 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ a 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI (Signal a) 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+hiSlider , viSlider :: (Integral a) 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ a 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ (a, a) 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ a 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI (Signal a) 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+canvas :: Dimension 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ EventS Graphic 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI ()
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+MIDI Input and Output
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+midiIn :: Signal DeviceID → UI (EventS [MidiMessage ]) 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+midiOut :: Signal DeviceID → EventS [MidiMessage ] → UI () 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+midiOut 
+\emph default
+takes a stream of MidiMessage events
+\series bold
+ 
+\series default
+and sends to MIDI output device, and 
+\emph on
+midiIn
+\emph default
+ generates a stream of MidiMessage events corresponding to the message sent
+ by the Midi input device.
+\end_layout
+
+\begin_layout Standard
+A virtual keyboard or fretboard is an input device, therefore we'd like
+ it to returns the same type as 
+\emph on
+midiIn
+\emph default
+.
+ It may take more arguments depending on the specifics of the instruments,
+ but it must return a stream of MidiMessage EventS.
+ 
+\emph on
+EventS MidiMessage 
+\emph default
+should work but because the type accepted by 
+\emph on
+midiOut
+\emph default
+ in Haskore is 
+\emph on
+EventS [MidiMessage],
+\emph default
+ I will stick to that when I define the virtual keyboard.
+\end_layout
+
+\begin_layout Standard
+From now on we are using the following synonym:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\series bold
+\emph on
+type
+\series default
+ EMM = EventS [MidiMessage]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Keyboard and fretboard as input devices
+\end_layout
+
+\begin_layout Standard
+We aim to have the piano keyboard and guitar fretboard share as many common
+ characteristics as possible.
+ Acting as MIDI input devices, the functions piano and guitar that define
+ their corresponding widgets should have the return type UI EMM, just like
+ the widget 
+\emph on
+midiIn
+\emph default
+ above.
+ For example, here is a sneak at the type signatures of the two widgets.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+piano :: PianoKeyMap 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ Midi.Channel 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+EMM 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI EMM
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+guitar
+\emph default
+ 
+\emph on
+:: GuitarKeyMap
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ Midi.Channel 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+EMM 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI EMM
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As one may have noticed, 
+\emph on
+piano
+\emph default
+ and 
+\emph on
+guitar 
+\emph default
+also allows 
+\emph on
+EMM
+\emph default
+ as input.
+ This is analogous to a real keyboard that has a MIDI-in port that propagates
+ MIDI messages.
+ We would also like to define a piano or guitar on a specific MIDI channel.
+ This way we can call multiple piano/guitar widgets that output MIDI messages
+ on different channels so that they can be combined and played simultaneously.
+\end_layout
+
+\begin_layout Section
+Common interface of the keyboard and fretboard
+\end_layout
+
+\begin_layout Subsection
+A key widget should be independent of other key widgets
+\end_layout
+
+\begin_layout Standard
+In this section, we mainly take examples from the piano keyboard but the
+ concept is similar on the guitar fretboard.
+ Any difference is highlighted in the later section.
+ 
+\end_layout
+
+\begin_layout Standard
+On many music instruments, a sound is made when a key is pressed.
+ The sound corresponds to a certain music pitch.
+ In our widget, we also need to animate that a key is being pressed or released.
+ A key on a piano keyboard should be animated as pressed in three ways:
+ when the user press a key on the computer keyboard that is mapped to the
+ piano keyboard, when the user's mouse clicks on that key on the screen,
+ or when one of the musical notes of the song being played at this particular
+ point in time is the exact same as the note (in terms of absolute pitch)
+ mapped to that key.
+ We define a 
+\emph on
+KeyBool
+\emph default
+ data type to reflect this:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\series bold
+data 
+\series default
+\emph on
+KeyBool = KeyBool {keypad: Bool, mouse: Bool, song::Bool} 
+\series bold
+deriving
+\series default
+ (Show, Eq)
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+isKeyDown (KeyBool False False False) = False
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+isKeyDown _ = True
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+isKeyPlay (KeyBool False False _) = False
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+isKeyPlay _ = True
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+isKeyDown
+\emph default
+ is a function that checks if a key should be animated as pressed or unpressed.
+ 
+\emph on
+isKeyPlay
+\emph default
+ checks if a sound (MidiMessage NoteOn) should be sent according to the
+ interaction with the piano keyboard.
+ The sound from a song being played is treated separately.
+ This is just a design choice: when a note played in the song is out of
+ the range of the piano keyboard, no key will be seen as pressed, but we
+ still want the sound output to go through.
+\end_layout
+
+\begin_layout Standard
+A key can be thought of as a more basic 
+\begin_inset Quotes eld
+\end_inset
+
+widget
+\begin_inset Quotes erd
+\end_inset
+
+ itself.
+ A key is pressed or unpressed independently of others.
+ Should the key produce the MIDI message directly? For better modularity,
+ I keep the sound interpretation outside the key because it alleviates the
+ key from the responsibility of knowing which MIDI channel to write to and
+ what musical notation it associates with.
+\end_layout
+
+\begin_layout Standard
+Therefore, a 
+\emph on
+piano key widget 
+\emph default
+only need to know the (computer) key binding (
+\emph on
+Char
+\emph default
+), how to draw itself (
+\emph on
+KeyType
+\emph default
+), any time-varying information such as whether it is being pressed by a
+ song event and what music notation it should display (
+\emph on
+Signal KeyData
+\emph default
+).
+ The widget outputs a continuous signal about its state which is encapsulated
+ in the type 
+\emph on
+Signal KeyBool
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+data 
+\series default
+\emph on
+KeyData = KeyData { pressed :: Maybe Bool, notation :: Maybe String, offset
+ :: Int } deriving (Show, Eq)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+mkKey :: Char 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ KeyType 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal KeyData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI (Signal KeyBool)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The same is idea is extended to a 
+\emph on
+guitar key widget
+\emph default
+, which represents a string being pressed at a certain fret on the guitar
+ neck.
+\end_layout
+
+\begin_layout Subsection
+Meta-key information
+\end_layout
+
+\begin_layout Standard
+We also need to keep track of instrument-wide properties and allow it to
+ be time-varying
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+data
+\series default
+ 
+\emph on
+InstrumentData = InstrumentData { showNotation::Bool, keyPairs :: Maybe
+ [(AbsPitch, Bool), transpose :: AbsPitch]}
+\end_layout
+
+\begin_layout Subsection
+Take keys to sound
+\end_layout
+
+\begin_layout Standard
+The intermediate level between the representation of a piano key being pressed
+ and a sound being played is the musical notation associated with that key.
+ A key sends a continuous signal of 
+\emph on
+KeyBool 
+\emph default
+type.
+ However, a MIDI message is of event type: discrete events of NoteOn or
+ NoteOff messages.
+ It is not desirable to continuously send a NoteOn signal, for example.
+ We take advantage of the function 
+\emph on
+unique
+\emph default
+ provided by Haskore for dealing with signal:
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+unique :: Eq a => Signal a -> EventS a
+\end_layout
+
+\begin_layout Standard
+We define a 
+\emph on
+mkKeys 
+\emph default
+widget that converts the continuous signal of the state of each key (
+\emph on
+Signal KeyBool
+\emph default
+) to events that happen whenever that signal changes (which means the key
+ is pressed or release) and map the events to the corresponding musical
+ notation AbsPitch.
+ (An absolute pitch is an integer that identify a pitch and it also corresponds
+ to the Key data type in a MIDI Message.)
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+mkKeys 
+\emph default
+need to know the mapping of the keys to their corresponding 
+\emph on
+KeyType 
+\emph default
+and 
+\emph on
+Absolute Pitch
+\emph default
+.
+ It returns an event stream of pairs that identify if a pitch should be
+ played or stopped.
+ 
+\emph on
+mkKeys 
+\emph default
+also need to create and send key-specific 
+\emph on
+Signal KeyData 
+\emph default
+to each key.
+ To recap: 
+\emph on
+Signal KeyData 
+\emph default
+allows us to pack extra time-varying information sent to each key: for example
+ if a notation should be displayed (depending on the user's toggling of
+ the notation checkbox) or if that key should be pressed as its note is
+ being played in a song.
+ It is the breakdown of 
+\emph on
+Signal InstrumentData 
+\emph default
+for individual keys.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+mkKeys :: [(Char, KeyType, AbsPitch)]
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI (EventS [(AbsPitch, Bool)])
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We will map a function 
+\emph on
+getKeyData
+\emph default
+ that create 
+\emph on
+KeyData 
+\emph default
+for each key based on the absolute pitch value
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+getKeyData :: AbsPitch 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal KeyData
+\end_layout
+
+\begin_layout Standard
+Next, we just need a function that writes to EMM for us - the MIDI Input
+ format.
+ It is easy to write the following and lift it to the level of events by
+ using the 
+\emph on
+(=>>) 
+\emph default
+function
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+pairToMsg :: Midi.Channel -> [(AbsPitch, Bool)] -> [MidiMessage]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Note the (=>>) function is from Haskore's Signal library:
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+(=>>) :: EventS a 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ (a 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ b) 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ EventS b
+\end_layout
+
+\begin_layout Standard
+First, let us review the type of 
+\emph on
+MidiMessage
+\emph default
+ in Haskore.
+ Note that Haskore uses module 
+\noun on
+Codec.Midi
+\noun default
+ which interfaces with MIDI files and also defines Message as a standard
+ MIDI message.
+ MidiMessage adds the notation of ANote about which we are not concerned
+ for now.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+-- from module Codec.Midi
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+data 
+\series default
+\emph on
+Message 
+\emph default
+=
+\end_layout
+
+\begin_layout Standard
+-- Channel Messages
+\end_layout
+
+\begin_layout Standard
+\InsetSpace ~
+\InsetSpace ~
+
+\emph on
+NoteOff {channel :: !Channel , key :: !Key, velocity :: !Velocity }
+\end_layout
+
+\begin_layout Standard
+| 
+\emph on
+NoteOn{channel :: !Channel , key :: !Key, velocity :: !Velocity }
+\end_layout
+
+\begin_layout Standard
+| 
+\emph on
+ProgramChange {channel :: !Channel , preset :: !Preset }
+\end_layout
+
+\begin_layout Standard
+| ...
+\end_layout
+
+\begin_layout Standard
+-- Meta Messages
+\end_layout
+
+\begin_layout Standard
+| 
+\emph on
+TempoChange ! Tempo 
+\emph default
+|
+\end_layout
+
+\begin_layout Standard
+| ...
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+deriving 
+\series default
+\emph on
+(Show , Eq)
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+\begin_inset VSpace defskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+-- from Haskore
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+data 
+\series default
+\emph on
+MidiMessage = ANote{channel :: Channel , key :: Key
+\emph default
+, 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+velocity :: Velocity, duration :: Time }
+\end_layout
+
+\begin_layout Standard
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+\InsetSpace ~
+| Std Message
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+deriving 
+\series default
+\emph on
+Show
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Only NoteOff and NoteOn messages are needed because they correspond to a
+ key being pressed or release.
+ 
+\end_layout
+
+\begin_layout Section
+The Virtual Piano Keyboard
+\end_layout
+
+\begin_layout Subsection
+KeyType
+\end_layout
+
+\begin_layout Standard
+As we all know, a piano keyboard has white keys and black keys.
+ All black keys look identical, but white keys take three different shapes.
+ Take the first 5 notes of a keyboard starting from C and separate them
+ we associate the KeyType with shapes
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Standard
+
++----+     +----+     +-+     +----+     +----+
+\end_layout
+
+\begin_layout Standard
+
+| w  |     |b   |     | |     |    |     |    |
+\end_layout
+
+\begin_layout Standard
+
+| h  |     |l  n|     | |     |    |     |    |
+\end_layout
+
+\begin_layout Standard
+
+| i  |     |a  o|     | |     |    |     |    |
+\end_layout
+
+\begin_layout Standard
+
+| t  |bh   |c  t|     | |     |    |     |    |
+\end_layout
+
+\begin_layout Standard
+
+| e  |     |k  e|     | |     |    |     |    | wh
+\end_layout
+
+\begin_layout Standard
+
+| n  +--+  +----+  +--+ +--+  +----+  +--+    +
+\end_layout
+
+\begin_layout Standard
+
+| o     |  Black1  |       |  Black1  |       |
+\end_layout
+
+\begin_layout Standard
+
+| t     |          |       |          |       |
+\end_layout
+
+\begin_layout Standard
+
+| e     |          |       |          |       |
+\end_layout
+
+\begin_layout Standard
+
++-------+          +-------+          +-------+
+\end_layout
+
+\begin_layout Standard
+
+ White1              White2             White3
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The piano keyboard layout repeats for each octave so it is not difficult
+ to prepare our 
+\emph on
+defaultKeyLayout
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\series bold
+data 
+\series default
+\emph on
+KeyType = White1 | White2 | White3 | Black1 
+\series bold
+\emph default
+deriving
+\series default
+ 
+\emph on
+(Show, Eq)
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+defaultKeyLayout = 
+\emph default
+cycle 
+\emph on
+[White1, Black1, White2, Black1, White3, White1, Black1, White2, Black1,
+ White2, Black1, White3]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The layout facilitates the natural drawing of the keys from left to right
+ in the order above, allowing each key to draw itself (independently without
+ the need to know about other keys' position) where the current 
+\emph on
+cursor
+\emph default
+ is and at the end leaves the cursor where the next key can draw.
+\end_layout
+
+\begin_layout Standard
+Apart from drawing routines, we also need an auxiliary function to check
+ if a point (x-y coordinates) is inside one of the above shapes or not (so
+ as to decide whether a key is pressed when the mouse is clicked or unclicked)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+insideKey :: KeyType 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Point 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+BoundingBox 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Bool
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Virtual Guitar Fretboard
+\end_layout
+
+\begin_layout Subsection
+KeyType
+\end_layout
+
+\begin_layout Standard
+Design a virtual guitar is more challenging in a few ways.
+ First, the abstraction we have so far seem to be more suitable between
+ a key and a string on which it is pressed.
+ Hence a key is the an intersection between a string and a fret.
+ A standard guitar has 6 strings, which seem to behave like 6 keyboard above.
+\end_layout
+
+\begin_layout Standard
+But on each string, no matter what key is pressed, a sound is only made
+ when the string is picked.
+ In addition, a key pressed on the right of another key (on the same string)
+ makes that key have no effect.
+ In other words, only the right-most pressed key produces a sound when the
+ right string is picked.
+\end_layout
+
+\begin_layout Standard
+Guitar frets do not vary much in shape, except for the width which decreases
+ in those that are further on the right.
+ Therefore we only need a fret count number in order to know how to draw
+ it:
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+type 
+\series default
+\emph on
+KeyType = Int
+\end_layout
+
+\begin_layout Standard
+For aesthetics, we add a function to draw the guitar head before drawing
+ the strings.
+ It needs to know how many strings there are:
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+drawHead :: Int 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI ()
+\end_layout
+
+\begin_layout Standard
+The 
+\emph on
+guitar key widget 
+\emph default
+only differs from the 
+\emph on
+piano key widget 
+\emph default
+in the drawing functions used.
+\end_layout
+
+\begin_layout Subsection
+Guitar String
+\end_layout
+
+\begin_layout Standard
+Unlike in the virtual piano keyboard, there is more to do with a guitar
+ string rather than just manage a set of keys with 
+\emph on
+mkKeys
+\emph default
+.
+ First we need to define the plucking of a string:
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+pluckString :: Char 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI (Signal Bool)
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+pluckString 
+\emph default
+is similar to a simplified key widget: it checks if a certain character
+ (which is the only argument it takes) and respond with the familiar 
+\emph on
+Signal Bool
+\end_layout
+
+\begin_layout Standard
+We also need to modify 
+\emph on
+mkKeys 
+\emph default
+to handle the check when a string is plucked without any key pressed (free
+ string plucking).
+ Note the addition of the first two arguments which are the pitch of the
+ free string and whether it's plucked:
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+mkKeys :: AbsPitch -> Signal Bool -> [(Char, KeyType, AbsPitch)] -> Signal
+ InstrumentData -> UI (EventS [(AbsPitch, Bool)])
+\end_layout
+
+\begin_layout Standard
+Now 
+\emph on
+mkString
+\emph default
+ is a very similar to 
+\emph on
+mkKeys
+\emph default
+ in the piano except for the first argument which specifies the key-binding
+ for the string plucking.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+mkString :: ([Char], Pitch, Char) -> Signal InstrumentData -> UI (EventS
+ [(AbsPitch, Bool)])
+\end_layout
+
+\begin_layout Section
+Add-on widgets
+\end_layout
+
+\begin_layout Standard
+We have looked at the design and implementation of two virtual instruments:
+ keyboard and guitar.
+ The main difference between our virtual instrument and the one in real
+ life is that we leave out the extra features such as pedal, volume control,
+ transpose setting, playing a predefined song etc.
+ This section illustrates that such do not belong to the instrument at its
+ core.
+ Some can be achieved by post-processing the MIDI output that comes out
+ of the instrument.
+ Our virtual instrument allows input that changes its behavior such as displayin
+g a notation, transpose, or it can also read from a song and highlights
+ the notes that are played on the keyboard or fretboard.
+\end_layout
+
+\begin_layout Standard
+The greatest advantage of our approach so far is that all these widgets
+ are shared by both the guitar and the piano and can be generic to a new
+ virtual instrument designed this way.
+\end_layout
+
+\begin_layout Subsection
+Non-intrusive Widgets
+\end_layout
+
+\begin_layout Subsubsection
+Instrument Select Widget
+\end_layout
+
+\begin_layout Standard
+This is the simplest widget of all.
+ It takes advantage of the power of the meta message syntax in a MIDI message.
+ It displays the list of MIDI instruments available, provides a slider,
+ and add to EMM a message that change the instrument on a certain channel
+ whenever the user move the slider to choose a different instrument.
+ The function takes MIDI channel and the default instrument number, the
+ the event stream of MIDI messages as arguments.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+selectInstrument :: Midi.Channel 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Int 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+EMM 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI EMM
+\end_layout
+
+\begin_layout Subsubsection
+Song Widget
+\end_layout
+
+\begin_layout Standard
+Song widget takes a list of songs as input, provides the user with a list
+ of songs to choose and sends out an event stream of MidiMessage (EMM) as
+ soon as the user click Play on a selected song.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+selectSong :: [Music Pitch] 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI EMM
+\end_layout
+
+\begin_layout Standard
+Note 
+\emph on
+Music Pitch\InsetSpace ~
+
+\emph default
+ is the standard data type to represent a melody in Haskore.
+\end_layout
+
+\begin_layout Subsubsection
+Echo
+\end_layout
+
+\begin_layout Standard
+Echo widget is another post-process one: it takes EMM and recursively add
+ decaying sound to it whenever the Echo checkbox is ticked.
+ It also provides a slider to adjust decay rate and echo frequency at real
+ time.
+ Its type signature is simple
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+addEcho :: EMM 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ UI EMM
+\end_layout
+
+\begin_layout Subsection
+Intrusive Widgets
+\end_layout
+
+\begin_layout Subsubsection
+Notation Display Widget
+\end_layout
+
+\begin_layout Standard
+This widget differs from the ones so far in the way that it does not modify
+ any content of the MidiMessage.
+ It allows real time modification of the InstrumentData so that the user
+ can toggle the display of notation on the keys or not.
+ Because toggling the notation display can be quite common, the checkbox
+ and be checked or unchecked via a keyboard shortcut.
+ The key-binding is specified in the first argument.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+addNotation :: Char
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI (Signal InstrumentData)
+\end_layout
+
+\begin_layout Standard
+This is particularly useful to keep track of the pitch of the keys after
+ the user performs some transpose on the instrument, which brings us to
+ the Transpose widget.
+\end_layout
+
+\begin_layout Subsubsection
+Transpose Widget
+\end_layout
+
+\begin_layout Standard
+Transpose can be done at the MidiMessage level and thus can be independent
+ of the instrument itself, just like most of the previous widgets (except
+ 
+\emph on
+addNotation
+\emph default
+) However this way would cause a discrepancy with the notation display when
+ it is toggled on.
+ Therefore, similar to toggling notation display, we update the real-time
+ changes to 
+\emph on
+Signal InstrumentData 
+\emph default
+which is then passed into the instrument.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+addTranspose :: Signal InstrumentData
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI (Signal InstrumentData)
+\end_layout
+
+\begin_layout Subsubsection
+Pedal Widget
+\end_layout
+
+\begin_layout Standard
+There are two possibilities in designing a pedal widget.
+ One that one manipulate the MIDI message and one that changes modify the
+ internal state of the instrument.
+ The latter is more intrusive but easier to implement.
+ Due to the time limit, I make one exception to be in favor of implementation
+ over intrusion-free style.
+\end_layout
+
+\begin_layout Standard
+Similar to 
+\emph on
+addNotation
+\emph default
+, the pedal widget takes a key binding for easier toggling of the pedal
+ and modifies 
+\emph on
+Signal InstrumentData 
+\emph default
+in real time.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+addPedal :: Char 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData
+\end_layout
+
+\begin_layout Subsection
+Other possible add-ons
+\end_layout
+
+\begin_layout Subsubsection
+Generic and non-intrusive widgets
+\end_layout
+
+\begin_layout Standard
+The presence of the above non-intrusive widgets illustrate that the user
+ can write his own widget that modifies the MidiMessage and does not care
+ about the inside of the virtual instrument.
+ Examples of easy-to-implement widgets in this category are:
+\end_layout
+
+\begin_layout Enumerate
+A Global Transpose widget that transpose the pitch of all notes in the MidiMessa
+ge
+\end_layout
+
+\begin_layout Enumerate
+A Volume widget that changes the velocity component in the NoteOn and NoteOff
+ message.
+ This can be useful when the user has multiple instruments loaded on the
+ screen and would like to have one particular keyboard or guitar to sound
+ louder than the rest.
+ This widget can be applied to a single or a set of virtual instruments.
+\end_layout
+
+\begin_layout Subsubsection
+Instrument-specific widget
+\end_layout
+
+\begin_layout Standard
+In our implementation, the guitar fretboard is inferior to the keyboard
+ in some ways due to the awkward key-binding with the computer keyboard
+ and most importantly, the very limited support for concurrent keypresses
+ from the computer keyboard.
+ One can write guitar-specific widgets to make it more fun to play with
+ the virtual guitar
+\end_layout
+
+\begin_layout Enumerate
+A chord playing widget that allows the user to hold down to a chord name
+ and press UP key or DOWN key to strum up or down.
+ For example, hold 'D' and press UP to strum a D Major chord from string
+ #6 up to string #1; hold 'd' and press DOWN to strum a D minor chord from
+ string #1 down to string #6.
+ It becomes more challenging but one can even add key-binding UP+'3' to
+ strum from string #3 up to string #1.
+ Due to multiple ways of baring a D major or D minor, the widget may be
+ designed to take the preferred chord binding in the arguments.
+ For example, a pair ('D', 
+\begin_inset Quotes eld
+\end_inset
+
+x00232
+\begin_inset Quotes erd
+\end_inset
+
+) would mean that D Major should be played with string #1 pressed at 2nd
+ fret, string #2 at 3rd fret, string #3 at 2nd fret, string #4 and $5 free,
+ and string #6 must be muted during strumming.
+\end_layout
+
+\begin_layout Subsubsection
+Load/Save configuration widget
+\end_layout
+
+\begin_layout Standard
+Some of the magic performed by our virtual instrument relies on the 
+\emph on
+Signal InstrumentData 
+\emph default
+parameter.
+ The keyboard or fretboard widgets are called from an UI monad which allows
+ IO actions.
+ 
+\emph on
+saveConfig 
+\emph default
+widget allows 
+\emph on
+Signal InstrumentData
+\emph default
+ variable to pipe through intact but the widget saves the information to
+ a file.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+saveConfig, loadConfig :: FileName
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI (Signal InstrumentData)
+\end_layout
+
+\begin_layout Standard
+We include 
+\emph on
+FileName 
+\emph default
+as a string in the argument because GMI does not have a stable support for
+ textbox so that the user can enter text yet.
+ Conceptually, the file name may be entered by the user at run time.
+\end_layout
+
+\begin_layout Section
+Usage and Demo
+\end_layout
+
+\begin_layout Standard
+Let us review the type signatures of our virtual instruments
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+piano :: PianoKeyMap 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ Midi.Channel 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+EMM 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI EMM
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+guitar
+\emph default
+ 
+\emph on
+:: GuitarKeyMap
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+ Midi.Channel 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+Signal InstrumentData 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+EMM 
+\begin_inset Formula $\rightarrow$
+\end_inset
+
+UI EMM
+\end_layout
+
+\begin_layout Standard
+To allow much flexibility and customizability, these type signatures are
+ not ideally short.
+ However, default parameters are provided to make the setup of these instruments
+ painless.
+\end_layout
+
+\begin_layout Standard
+For the piano keyboard:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\series bold
+type
+\series default
+\emph on
+ PianoKeyMap = ([Char], Pitch)
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+defaultMap1, defaultMap2 :: PianoKeyMap
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+defaultMap1 = ("q2w3er5t6y7uQ@W#ERT^Y&U*", (C,3))
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+defaultMap2 = ("zsxdcvgbhnjmZSXDCVGBHNJM", (C,4))
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For the guitar fretboard:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\series bold
+type 
+\series default
+\emph on
+GuitarKeyMap = [([Char], Pitch, Char)]
+\end_layout
+
+\begin_layout Standard
+defaultMap :: GuitarKeyMap
+\end_layout
+
+\begin_layout Standard
+defaultMap = [string1, string2, string3, string4, string5, string6]
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+string6 = ("1qaz__________", (E,6), '
+\backslash
+b')
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+string5 = ("2wsx__________", (B,5), '=')
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+string4 = ("3edc__________", (G,5), '-')
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+string3 = ("4rfv__________", (D,5), '0')
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+string2 = ("5tgb__________", (A,4), '9')
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+string1 = ("6yhn__________", (D,4), '8')
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Common default variables for these instruments:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Standard
+
+\emph on
+nullEMM = constant Nothing
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+defaultInstrumentData = constant $ InstrumentData False Nothing 0 False
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Example:
+\end_layout
+
+\begin_layout Standard
+Below is the code and the screen-shots of the results
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Standard
+
+module Demo where
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+import InstrumentBase
+\end_layout
+
+\begin_layout Standard
+
+import Piano
+\end_layout
+
+\begin_layout Standard
+
+import Guitar
+\end_layout
+
+\begin_layout Standard
+
+import Helper
+\end_layout
+
+\begin_layout Standard
+
+import UI
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+demo1 = runUIEx (1000,1200) "Demo Virtual Instruments" $ do
+\end_layout
+
+\begin_layout Standard
+
+      devId   <- selectOutput
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+      piano1 <- title "Keyboard 1" $ do
+\end_layout
+
+\begin_layout Standard
+
+        songEMM <- selectSong [fjfj]
+\end_layout
+
+\begin_layout Standard
+
+        pedalData <- addPedal 'P' defaultInstrumentData
+\end_layout
+
+\begin_layout Standard
+
+        msg <- piano defaultMap0 0 pedalData songEMM
+\end_layout
+
+\begin_layout Standard
+
+        addEcho msg
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+      guitar1 <- pad (0,50,0,0) $ title "Guitar 1" $ do
+\end_layout
+
+\begin_layout Standard
+
+        notationData <- addNotation 'N' defaultInstrumentData
+\end_layout
+
+\begin_layout Standard
+
+        guitar [string1, string2, string3, string4, string5, string6] 1
+ notationData nullEMM
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+      midiOut devId (piano1 |+| guitar1)
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+demo2 = runUIEx (550,1000) "Demo 2 keyboards" $ do
+\end_layout
+
+\begin_layout Standard
+
+      devId   <- selectOutput
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+      piano1 <- title "Keyboard 1" $ do
+\end_layout
+
+\begin_layout Standard
+
+        songEMM <- selectSong [fjfj]
+\end_layout
+
+\begin_layout Standard
+
+        pedalData <- addPedal 'P' defaultInstrumentData
+\end_layout
+
+\begin_layout Standard
+
+        msg <- title "Keyboard 1" $ piano defaultMap1 0 pedalData songEMM
+\end_layout
+
+\begin_layout Standard
+
+        msgWithEcho <- addEcho msg
+\end_layout
+
+\begin_layout Standard
+
+        selectInstrument 1 15 msgWithEcho
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+      piano2  <- pad (0,50,0,0) $ title "Keyboard 2" $ do
+\end_layout
+
+\begin_layout Standard
+
+        notationData <- addNotation 'N' defaultInstrumentData
+\end_layout
+
+\begin_layout Standard
+
+        piano defaultMap2 1 notationData nullEMM
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+      midiOut devId (piano1 |+| piano2)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Graphics
+	filename demo1.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Demo2:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Graphics
+	filename demo2.png
+	scale 70
+	BoundingBox 0bp 0bp 550bp 800bp
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\newpage
+
+\end_layout
+
+\begin_layout Section*
+References
+\end_layout
+
+\begin_layout Standard
+[E09] Eric Cheng.
+ A Purely Functional Interactive Computer Music Framework
+\end_layout
+
+\begin_layout Standard
+[EH97] Conal Elliott and Paul Hudak.
+ Functional reactive animation.
+ In International Conference on Functional Programming , 1997.
+\end_layout
+
+\begin_layout Standard
+[HCNP02] Paul Hudak, Antony Courtney, Henrik Nilsson, and John Peterson.
+ Arrows, robots, and functional reactive programming.
+ In Johan Jeuring and Simon L.
+ Peyton Jones, editors, Advanced Functional Programming , volume 2638 of
+ Lecture Notes in Computer Science , pages 159–187.
+ Springer, 2002.
+\end_layout
+
+\begin_layout Standard
+[WTH01] Z.
+ Wan, W.
+ Taha, and P.
+ Hudak.
+ Real-time FRP.
+ In International Conference on Functional Programming , Florence, Italy,
+ September 2001
+\end_layout
+
+\begin_layout Standard
+[HMGW96] Paul Hudak, Tom Makucevich, Syam Gadde, and Bo Whong.
+ Haskore music notation - an algebra of music.
+ Journal of Functional Programming, 6(3):465–483, 1996.
+\end_layout
+
+\begin_layout Standard
+[H00] Paul Hudak.
+ The Haskell School of Expression: Learning Functional Programming through
+ Multimedia.
+ Cambridge University Press, New York 2000
+\end_layout
+
+\begin_layout Standard
+[H08] Paul Hudak.
+ The Haskell School of Music.
+ Yale University, 2008
+\end_layout
+
+\end_body
+\end_document

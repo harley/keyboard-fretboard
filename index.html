@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+  <title>Virtual Piano Keyboard and Guitar Fretboard Widgets for Euterpea</title>
+  <link href="application.css" media="screen" rel="stylesheet" type="text/css" />
+</head>
+  <body>
+    <div id="container">
+      <h1 align="center">Virtual Piano Keyboard and Guitar Fretboard Widgets for Euterpea</h1>
+      <h3 align="center">Harley Trung</h3>
+      <h3 align="center">Advisor: Paul Hudak</h3>
+
+      <h2>Abstract</h2>
+
+      <p>Functional Reactive Programming (FRP) is a programming paradigm for reactive programming using the building blocks of functional programming to model hybrid systems containing both continuous time-varying behaviors and discrete events. FRP has been applied to a variety of systems, including computer animation [EH97], robotics [HCNP02], and real-time systems [WTH01].</p>
+      <p>
+      In computer music, we want to expose to the programmer the notion of discrete notes, events, and continuous audio signals, as well as the transition and interaction between these entities. The hybrid and dynamic nature of the problem makes FRP a good choice for modeling computer music systems.[E09]
+      </p>
+      <p>
+      Euterpea [HMGW96], a domain-specific language (DSL) built on top of Haskell, takes an algebraic approach to high-level music description and composition. Euterpea has built-in functions to represent notes, rhythms, chords and many more. In Euterpea a basic set of widgets is provided that are collectively referred to as the Graphical Music Interface (GMI). [H08]
+      </p>
+      <p>
+      However, Euterpea GMI currently provides only a limited set of UI widgets that can only create buttons, value sliders, checkboxes, radio buttons, text displays, and allow MIDI input and output. This project sets out to add to Euterpea two high-level, sophisticated widgets: a piano keyboard and a guitar fretboard. There are four goals in mind. First, the design and implementation should be as generic as possible, maximizing common features to be shared by a piano keyboard and a guitar fretboard. Second, the design should reflect real life instruments. For example, the virtual piano keyboard should behave almost identical to a MIDI keyboard that can be plugged into a computer for MIDI input; a pedal can be attached to it and there are nobs to change various settings such as echo, transpose, etc. Third, the interface must not only be simple enough to customize and use, but also support a rich set of features such as echo, transpose, pedal, import-song, change-instrument and MIDI output. Finally, I discuss the challenges encountered during the development and potential contributions of these widgets to a Euterpea user. </p>
+      </p>
+      <h2> Final Report </h2>
+      Please click on the link to download my <a href="report.pdf">report</a>.
+
+      <h2> Screenshots </h2>
+      <table cellpadding=20>
+      <tr>
+        <th valign="top">
+          Screenshot of a piano keyboard and a guitar fretboard
+        </th>
+        <th>
+          Screenshot of 2 piano keyboards widgets
+        </th>
+      </tr>
+      <tr>
+        <td>
+          <img src="demo1.png" width="452" />
+        </td>
+        <td>
+          <img src="demo2.png" width="452" />
+        </td>
+      </tr>
+      </table>
+
+      <h2> Source Code</h2>
+      Source codes can be downloaded from <a href="sourcecode.zip">here</a>.  I will provide instructions on how to compile and test the code soon.  The piano keyboard code works very well.  The guitar freboard suffers from the limited ability of the computer keyboard to send any concurrent key press signal so I am still trying to find a way to work around that in the near future.
+
+      <h2>Project Proposal</h2>
+      The original <a href="proposal.pdf">proposal</a> has very little to do with the final project.  It was modified due to unforeseen difficulties.
+      <h2>Acknowledgements</h2>
+      I am deeply grateful to professor Hudak and his graduate Paul Liu and Eric Cheng for their patience and guidance.
+    </div>
+  </body>
+</html>
+
