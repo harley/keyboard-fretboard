@@ -1,2 +1,30 @@
-Instruction to download and use will be added soon!
+keyboard-fretboard
+==================
+Implementation of a virtual keyboard and a virtual fretboard in the forms of widgets for Euterpea.
+
+Euterpea is a framework providing DSL for computer music, written in Haskell by Paul Hudak, Paul Liu and Eric Cheng.
+
+Installation
+============
+1. GHC:
+    Follow instructions here: http://www.haskell.org/ghc/
+
+2. Euterpea:
+    Install cabal
+    Install darcs
+        cabal update
+        cabal install darcs --flags="http -curl"
+        export PATH=~/.cabal/bin:$PATH (put this it your ~/.bashrc or something equivalent in your OS)
+    Install Euterpea
+        darcs get http://code.haskell.org/Euterpea
+        cd Euterpea
+        cabal install
+3. keyboard-fretboard widget
+    Edit .ghci file to the right path to Euterpea source path
+
+4. Now you're done. Run Piano.hs or Guitar.hs or Demo.hs to see results.  See source code for more details.
+
+NOTE
+====
+Sorry the instructions are still VERY crude.  I will work on a proper set of instruction one day.  For now, feel free to message me if there is any question.
 
